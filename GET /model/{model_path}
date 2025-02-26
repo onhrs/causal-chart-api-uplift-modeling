@@ -1,0 +1,19 @@
+
+## 使用方法
+
+1. リポジトリをクローン
+2. 依存関係をインストール: `pip install -r requirements.txt`
+3. APIを起動: `uvicorn app:app --reload`
+4. ブラウザで `http://localhost:8000/docs` にアクセスしてSwagger UIを表示
+
+## 必要条件
+
+- Python 3.8+
+- FastAPI
+- scikit-learn
+- causalml
+- pandas
+- numpy
+
+## Dockerでの実行
+
