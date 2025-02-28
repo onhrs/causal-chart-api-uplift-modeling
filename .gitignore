@@ -46,7 +46,6 @@ models/*.pkl
 
 # Jupyter Notebooks
 .ipynb_checkpoints
-*.ipynb
 
 # Mac OS
 .DS_Store
