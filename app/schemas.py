@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Any, Union
 
 class DataPoint(BaseModel):
@@ -35,8 +35,17 @@ class PredictRequest(BaseModel):
 
 class PredictResponse(BaseModel):
     """Response from /predict, containing the predictions."""
-    predictions: List[float]
+    predictions: List[float]  # フラットな浮動小数点数のリスト
     model_type: str
+    
+    @validator('predictions', pre=True)
+    def flatten_predictions(cls, v):
+        """
+        予測値が入れ子のリストになっている場合はフラット化する
+        """
+        if isinstance(v, list) and v and isinstance(v[0], list):
+            return [item for sublist in v for item in sublist]
+        return v
 
 class ModelInfoResponse(BaseModel):
     """モデル情報のレスポンス"""

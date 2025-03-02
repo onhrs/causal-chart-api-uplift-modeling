@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  api:
+    image: "causal-chart-api-uplift-modeling:0.0.1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./saved_models:/app/saved_models
+    restart: unless-stopped
+    environment:
+      - PORT=8000

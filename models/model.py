@@ -1,12 +1,58 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestRegressor
-from causalml.inference.meta import BaseSRegressor, BaseTRegressor, BaseXRegressor, BaseRRegressor
-from causalml.inference.tree import UpliftTreeClassifier, UpliftRandomForestClassifier
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 import datetime
 from typing import Dict, List, Any, Optional, Union
+import logging
+
+logger = logging.getLogger(__name__)
+
+# causalmlライブラリの機能を安全にインポート
+try:
+    from causalml.inference.meta import BaseSRegressor, BaseTRegressor, BaseXRegressor, BaseRRegressor
+    META_MODELS_AVAILABLE = True
+except ImportError:
+    logger.warning("Meta learners not available. Some functionality will be limited.")
+    META_MODELS_AVAILABLE = False
+    
+    # モックオブジェクト（APIを維持するため）
+    class MockMetaLearner:
+        def __init__(self, *args, **kwargs):
+            self.not_available = True
+        
+        def fit(self, *args, **kwargs):
+            raise RuntimeError("Meta learners are not available in this environment")
+        
+        def predict(self, *args, **kwargs):
+            raise RuntimeError("Meta learners are not available in this environment")
+    
+    BaseSRegressor = MockMetaLearner
+    BaseTRegressor = MockMetaLearner
+    BaseXRegressor = MockMetaLearner
+    BaseRRegressor = MockMetaLearner
+
+try:
+    from causalml.inference.tree import UpliftTreeClassifier, UpliftRandomForestClassifier
+    TREE_MODELS_AVAILABLE = True
+except ImportError:
+    logger.warning("Tree-based uplift models not available. Some functionality will be limited.")
+    TREE_MODELS_AVAILABLE = False
+    
+    # モックオブジェクト（APIを維持するため）
+    class MockTreeModel:
+        def __init__(self, *args, **kwargs):
+            self.not_available = True
+        
+        def fit(self, *args, **kwargs):
+            raise RuntimeError("Tree-based models are not available in this environment")
+        
+        def predict(self, *args, **kwargs):
+            raise RuntimeError("Tree-based models are not available in this environment")
+    
+    UpliftTreeClassifier = MockTreeModel
+    UpliftRandomForestClassifier = MockTreeModel
 
 def train_model(X, y):
     model = LogisticRegression()
@@ -49,10 +95,34 @@ def train_uplift_model(
     else:
         treatment = df[treatment_col].apply(lambda x: 'control' if x == 0 else 'treatment')
     
-    # データ分割（学習:テスト = 7:3）
-    X_train, X_test, y_train, y_test, treat_train, treat_test = train_test_split(
-        X, y, treatment, test_size=0.3, random_state=42
-    )
+    # 処置グループが両方あることを確認
+    unique_treatments = treatment.unique()
+    if len(unique_treatments) < 2:
+        raise ValueError(f"Treatment vector must have both control and treatment groups. Found only: {unique_treatments}")
+    
+    # サンプル数が少ない場合は分割せずに全データを使用
+    if len(df) < 10:  # サンプルサイズが10未満の場合
+        logger.warning("Dataset too small for train-test split. Using all data for both training and evaluation.")
+        X_train = X_test = X
+        y_train = y_test = y
+        treat_train = treat_test = treatment
+    else:
+        # データ分割（学習:テスト = 7:3）
+        try:
+            X_train, X_test, y_train, y_test, treat_train, treat_test = train_test_split(
+                X, y, treatment, test_size=0.3, random_state=42, stratify=treatment
+            )
+            # 分割後も両方の処置グループがあることを確認
+            if len(treat_train.unique()) < 2 or len(treat_test.unique()) < 2:
+                logger.warning("Train-test split resulted in imbalanced treatment groups. Using all data.")
+                X_train = X_test = X
+                y_train = y_test = y
+                treat_train = treat_test = treatment
+        except ValueError as e:
+            logger.warning(f"Train-test split failed: {e}. Using all data.")
+            X_train = X_test = X
+            y_train = y_test = y
+            treat_train = treat_test = treatment
     
     # モデルの選択とトレーニング
     model = None
@@ -154,7 +224,7 @@ def train_uplift_model(
     
     return model_info
 
-def predict_uplift(model_info: Dict[str, Any], X: pd.DataFrame) -> np.ndarray:
+def predict_uplift(model_info: Dict[str, Any], X: pd.DataFrame) -> List[float]:
     """
     アップリフトモデルを使用して予測を行う関数
     
@@ -163,15 +233,31 @@ def predict_uplift(model_info: Dict[str, Any], X: pd.DataFrame) -> np.ndarray:
         X: 予測に使用する特徴量データ
         
     Returns:
-        アップリフト予測値の配列
+        アップリフト予測値のリスト（Pythonネイティブ型）
     """
     model = model_info["model"]
     model_type = model_info["model_type"]
     
     # モデルタイプに応じた予測
-    if model_type in ["causal_tree", "uplift_rf"]:
-        predictions = model.predict(X.values).flatten()
-    else:
-        predictions = model.predict(X)
+    try:
+        if model_type in ["causal_tree", "uplift_rf"]:
+            predictions = model.predict(X.values)
+        else:
+            predictions = model.predict(X)
+        
+        # 予測結果の形状を確認し、適切に処理
+        if hasattr(predictions, 'shape') and len(predictions.shape) > 1:
+            # 多次元配列の場合は平坦化
+            predictions = predictions.flatten()
+        
+        # NumPy配列をPythonネイティブ型に変換
+        predictions = [float(p) for p in predictions]
+        
+        return predictions
     
-    return predictions
+    except Exception as e:
+        logger.error(f"Prediction error: {e}")
+        # スタックトレースを記録
+        import traceback
+        logger.error(traceback.format_exc())
+        raise ValueError(f"Error during prediction: {e}")

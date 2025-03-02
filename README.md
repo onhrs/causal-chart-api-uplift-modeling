@@ -27,7 +27,7 @@ git clone https://github.com/yourusername/causal-chart-api-uplift-modeling.git
 cd causal-chart-api-uplift-modeling
 
 # 依存パッケージのインストール
-pip install -r requirements.txt
+poetry install
 ```
 
 ## 使用方法

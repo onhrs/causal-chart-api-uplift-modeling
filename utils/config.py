@@ -1,9 +1,10 @@
 import os
+from pathlib import Path
 
-# ベースディレクトリの設定
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# プロジェクトのベースディレクトリ
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-# モデル保存パス
+# モデルを保存するディレクトリ
 MODEL_DIR = os.path.join(BASE_DIR, "saved_models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
@@ -19,7 +20,10 @@ DEFAULT_MODEL_PARAMS = {
     "max_depth": 5
 }
 
-# APIの設定
+# APIの詳細
 API_TITLE = "Uplift Modeling API"
-API_DESCRIPTION = "An API for training and using uplift models"
-API_VERSION = "1.0.0"
+API_DESCRIPTION = "アップリフトモデリングのためのAPI"
+API_VERSION = "0.1.0"
+
+# ロギングの設定
+LOG_LEVEL = "INFO"
