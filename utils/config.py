@@ -1,12 +1,14 @@
 import os
 from pathlib import Path
 
-# プロジェクトのベースディレクトリ
-BASE_DIR = Path(__file__).resolve().parent.parent
+# アプリケーションのベースディレクトリ
+BASE_DIR = Path(__file__).parent.parent.absolute()
 
-# モデルを保存するディレクトリ
-MODEL_DIR = os.path.join(BASE_DIR, "saved_models")
-os.makedirs(MODEL_DIR, exist_ok=True)
+# モデル保存用ディレクトリ
+MODEL_DIR = os.path.join(BASE_DIR, "models", "saved")
+
+# データセット保存用ディレクトリ
+DATA_DIR = os.path.join(BASE_DIR, "assets")
 
 # データ関連の設定
 DEFAULT_FEATURES = ["Recency", "History", "Mens", "Womens", "Newbie"]
@@ -20,10 +22,15 @@ DEFAULT_MODEL_PARAMS = {
     "max_depth": 5
 }
 
-# APIの詳細
+# API設定
 API_TITLE = "Uplift Modeling API"
-API_DESCRIPTION = "アップリフトモデリングのためのAPI"
+API_DESCRIPTION = "API for training and using uplift models"
 API_VERSION = "0.1.0"
+API_PORT = 8000
 
 # ロギングの設定
 LOG_LEVEL = "INFO"
+
+# 起動時にディレクトリを作成
+os.makedirs(MODEL_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
