@@ -55,3 +55,7 @@ models/*.pkl
 
 *.pkl
 *.csv
+*.png
+*.jpg
+*.jpeg
+*.gif
